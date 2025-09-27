@@ -460,6 +460,8 @@ module cva6_icache
 
   logic [CVA6Cfg.ICACHE_TAG_WIDTH:0] cl_tag_valid_rdata[CVA6Cfg.ICACHE_SET_ASSOC-1:0];
 
+
+`ifndef TARGET_SRAM_MC
   for (genvar i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin : gen_sram
     // Tag RAM
     sram_cache #(
@@ -482,7 +484,6 @@ module cva6_icache
         .ruser_o(),
         .rdata_o(cl_tag_valid_rdata[i])
     );
-
     assign cl_tag_rdata[i] = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH-1:0];
     assign vld_rdata[i]    = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH];
 
@@ -508,6 +509,53 @@ module cva6_icache
     );
   end
 
+`else
+  logic [CVA6Cfg.ICACHE_SET_ASSOC-1:0] unused_bits;
+  for (genvar i = 0; i < CVA6Cfg.ICACHE_SET_ASSOC; i++) begin : gen_sram
+    // Tag RAM
+    TS1N28HPCPUHDSVTB64X48M4SWBSO tag_sram(
+      .SLP  (1'b0),
+      .SD   (1'b0),
+      .CLK  (clk_i),
+      .CEB  (!vld_req[i]),
+      .WEB  (!vld_we),
+      .CEBM (1'b1),
+      .WEBM (1'b1),
+      .A    (vld_addr),
+      .D    ({1'b0, vld_wdata[i], cl_tag_q}),
+      .BWEB ('0),
+      .AM   ('0),
+      .DM   ('0),
+      .BWEBM('1),
+      .BIST (1'b0),
+      .RTSEL(2'b01),
+      .WTSEL(2'b0),
+      .Q    ({unused_bits[i], cl_tag_valid_rdata[i]}));
+
+    assign cl_tag_rdata[i] = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH-1:0];
+    assign vld_rdata[i]    = cl_tag_valid_rdata[i][CVA6Cfg.ICACHE_TAG_WIDTH];
+
+      // Data RAM
+    TS1N28HPCPUHDSVTB64X128M4SWBSO data_sram(
+      .SLP  (1'b0),
+      .SD   (1'b0),
+      .CLK  (clk_i),
+      .CEB  (!cl_req[i]),
+      .WEB  (!cl_we),
+      .CEBM (1'b1),
+      .WEBM (1'b1),
+      .A    (cl_index),
+      .D    (mem_rtrn_i.data),
+      .BWEB ('0),
+      .AM   ('0),
+      .DM   ('0),
+      .BWEBM('1),
+      .BIST (1'b0),
+      .RTSEL(2'b01),
+      .WTSEL(2'b0),
+      .Q    (cl_rdata[i]));
+     end
+`endif
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : p_regs
     if (!rst_ni) begin

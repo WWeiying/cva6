@@ -303,6 +303,7 @@ module wt_dcache_mem
 
   logic [CVA6Cfg.DCACHE_TAG_WIDTH:0] vld_tag_rdata[CVA6Cfg.DCACHE_SET_ASSOC-1:0];
 
+`ifndef TARGET_SRAM_MC
   for (genvar k = 0; k < DCACHE_NUM_BANKS; k++) begin : gen_data_banks
     // Data RAM
     sram_cache #(
@@ -351,6 +352,69 @@ module wt_dcache_mem
         .rdata_o(vld_tag_rdata[i])
     );
   end
+
+`else
+  for (genvar k = 0; k < DCACHE_NUM_BANKS; k++) begin : gen_data_banks
+    // Data RAM
+  logic [DCACHE_NUM_BANKS-1:0][CVA6Cfg.DCACHE_SET_ASSOC-1:0][CVA6Cfg.XLEN-1:0] bank_be_o;
+
+  always_comb begin
+    for(int i=0; i<CVA6Cfg.DCACHE_SET_ASSOC; i++) begin
+      for(int j=0; j<(CVA6Cfg.XLEN/8); j++) begin
+        bank_be_o[k][i][j*8 +: 8] = {8{bank_be[k][i][j]}};
+      end
+    end
+  end
+
+  TS1N28HPCPUHDSVTB64X256M1SWBSO i_data_sram(
+    .SLP  (1'b0),
+    .SD   (1'b0),
+    .CLK  (clk_i),
+    .CEB  (!bank_req[k]),
+    .WEB  (!bank_we[k]),
+    .CEBM (1'b1),
+    .WEBM (1'b1),
+    .A    (bank_idx[k]),
+    .D    (bank_wdata[k]),
+    .BWEB (~bank_be_o[k]),
+    .AM   ('0),
+    .DM   ('0),
+    .BWEBM('1),
+    .BIST (1'b0),
+    .RTSEL(2'b01),
+    .WTSEL(2'b0),
+    .Q    (bank_rdata[k]));
+
+  end
+
+  logic [1:0] unused_bits[CVA6Cfg.DCACHE_SET_ASSOC-1:0];
+
+  for (genvar i = 0; i < CVA6Cfg.DCACHE_SET_ASSOC; i++) begin : gen_tag_srams
+
+    assign tag_rdata[i]     = vld_tag_rdata[i][CVA6Cfg.DCACHE_TAG_WIDTH-1:0];
+    assign rd_vld_bits_o[i] = vld_tag_rdata[i][CVA6Cfg.DCACHE_TAG_WIDTH];
+
+  TS1N28HPCPUHDSVTB64X48M4SWBSO i_tag_sram(
+    .SLP  (1'b0),
+    .SD   (1'b0),
+    .CLK  (clk_i),
+    .CEB  (!vld_req[i]),
+    .WEB  (!vld_we),
+    .CEBM (1'b1),
+    .WEBM (1'b1),
+    .A    (vld_addr),
+    .D    ({2'b0, vld_wdata[i], wr_cl_tag_i}),
+    .BWEB ('0),
+    .AM   ('0),
+    .DM   ('0),
+    .BWEBM('1),
+    .BIST (1'b0),
+    .RTSEL(2'b01),
+    .WTSEL(2'b0),
+    .Q    ({unused_bits[i], vld_tag_rdata[i]}));
+
+  end
+`endif
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : p_regs
     if (!rst_ni) begin

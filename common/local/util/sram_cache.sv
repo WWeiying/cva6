@@ -110,14 +110,11 @@ module sram_cache #(
           .NUM_WORDS  (NUM_WORDS)
       ) data_sram (
           .clk_i  (clk_i),
-          .rst_ni (rst_ni),
           .req_i  (req_i),
           .we_i   (we_i),
           .addr_i (addr_i),
-          .wuser_i(wuser_i),
           .wdata_i(wdata_i),
           .be_i   (be_i),
-          .ruser_o(ruser_o),
           .rdata_o(rdata_o)
       );
   end

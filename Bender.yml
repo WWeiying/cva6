@@ -236,10 +236,13 @@ sources:
       # SRAM Wrappers stay tech-independent; we leave technology mapping to tc_sram
       - common/local/util/tc_sram_wrapper.sv
       - common/local/util/tc_sram_wrapper_cache_techno.sv
-      - common/local/util/sram_pulp.sv
-      - common/local/util/sram_cache.sv
 
-      - target: not(synthesis)
+      - target: not(sram_mc) 
+        files:
+          - common/local/util/sram_cache.sv
+          - common/local/util/sram_pulp.sv
+
+      - target: notsynthesis
         files:
           # Tracer (behavioral code, not RTL)
           - core/include/instr_tracer_pkg.sv
