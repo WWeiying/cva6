@@ -47,10 +47,10 @@ module acc_dispatcher
     output logic dirty_v_state_o,
     input logic acc_mmu_en_i,
     // Interface with the issue stage
-    input scoreboard_entry_t issue_instr_i,
-    input logic issue_instr_hs_i,
+    input scoreboard_entry_t [CVA6Cfg.NrIssuePorts-1:0] issue_instr_i,
+    input logic [CVA6Cfg.NrIssuePorts-1:0] issue_instr_hs_i,
     output logic issue_stall_o,
-    input fu_data_t fu_data_i,
+    input fu_data_t [CVA6Cfg.NrIssuePorts-1:0] fu_data_i,
     input scoreboard_entry_t [CVA6Cfg.NrCommitPorts-1:0] commit_instr_i,
     output logic [CVA6Cfg.TRANS_ID_BITS-1:0] acc_trans_id_o,
     output logic [CVA6Cfg.XLEN-1:0] acc_result_o,
@@ -96,6 +96,13 @@ module acc_dispatcher
 
   logic acc_ready;
   logic acc_valid_d, acc_valid_q;
+  logic [1:0] acc_insn_valid_d;
+  logic [1:0] acc_insn_valid_q;
+  `FF(acc_insn_valid_q, acc_insn_valid_d, '0)
+
+  assign acc_insn_valid_d[0]    = (~issue_instr_i[0].ex.valid & issue_instr_hs_i[0] & (issue_instr_i[0].fu == ACCEL)) &&  ~flush_unissued_instr_i;
+
+  assign acc_insn_valid_d[1]    = (~issue_instr_i[1].ex.valid & issue_instr_hs_i[1] & (issue_instr_i[1].fu == ACCEL)) &&  ~flush_unissued_instr_i;
 
   /**************************
    *  Accelerator issue     *
@@ -105,9 +112,8 @@ module acc_dispatcher
   `FF(acc_valid_q, acc_valid_d, '0)
 
   assign acc_valid_ex_o = acc_valid_q;
-  assign acc_valid_d    = ~issue_instr_i.ex.valid &
-                          issue_instr_hs_i &
-                          (issue_instr_i.fu == ACCEL) &
+  assign acc_valid_d    = ((~issue_instr_i[0].ex.valid & issue_instr_hs_i[0] & (issue_instr_i[0].fu == ACCEL)) ||
+                           (~issue_instr_i[1].ex.valid & issue_instr_hs_i[1] & (issue_instr_i[1].fu == ACCEL))) &
                           ~flush_unissued_instr_i;
 
   // Accelerator load/store pending signals
@@ -116,27 +122,37 @@ module acc_dispatcher
 
   // Stall issue stage in three cases:
   always_comb begin : stall_issue
-    unique case (issue_instr_i.fu)
-      ACCEL:
-      // 1. We're issuing an accelerator instruction but the dispatcher isn't ready yet
+//    unique case (issue_instr_i.fu)
+//      ACCEL:
+//      // 1. We're issuing an accelerator instruction but the dispatcher isn't ready yet
+//      issue_stall_o = ~acc_ready;
+//      LOAD:
+//      // 2. We're issuing a scalar load but there is an inflight accelerator store.
+//      issue_stall_o = acc_cons_en_i & ~acc_no_st_pending;
+//      STORE:
+//      // 3. We're issuing a scalar store but there is an inflight accelerator load or store.
+//      issue_stall_o = acc_cons_en_i & (~acc_no_st_pending | ~acc_no_ld_pending);
+//      default: issue_stall_o = 1'b0;
+//    endcase
+    issue_stall_o = 1'b0;
+    if((issue_instr_i[0].fu == ACCEL) || (issue_instr_i[1].fu == ACCEL)) begin
       issue_stall_o = ~acc_ready;
-      LOAD:
-      // 2. We're issuing a scalar load but there is an inflight accelerator store.
+    end
+    if((issue_instr_i[0].fu == LOAD) || (issue_instr_i[1].fu == LOAD)) begin
       issue_stall_o = acc_cons_en_i & ~acc_no_st_pending;
-      STORE:
-      // 3. We're issuing a scalar store but there is an inflight accelerator load or store.
+    end
+    if((issue_instr_i[0].fu == STORE) || (issue_instr_i[1].fu == STORE)) begin
       issue_stall_o = acc_cons_en_i & (~acc_no_st_pending | ~acc_no_ld_pending);
-      default: issue_stall_o = 1'b0;
-    endcase
+    end
   end
 
   /***********************
    *  Instruction queue  *
    ***********************/
 
-  localparam InstructionQueueDepth = 3;
+  localparam InstructionQueueDepth = 8;
 
-  fu_data_t                                        acc_data;
+  fu_data_t      [CVA6Cfg.NrIssuePorts-1:0]        acc_data;
   fu_data_t                                        acc_insn_queue_o;
   logic                                            acc_insn_queue_pop;
   logic                                            acc_insn_queue_empty;
@@ -144,9 +160,12 @@ module acc_dispatcher
   logic                                            acc_commit;
   logic     [           CVA6Cfg.TRANS_ID_BITS-1:0] acc_commit_trans_id;
 
-  assign acc_data = acc_valid_ex_o ? fu_data_i : '0;
+  //assign acc_data = acc_valid_ex_o ? fu_data_i : '0;
 
-  cva6_fifo_v3 #(
+  assign acc_data[0] = acc_insn_valid_q[0] ? fu_data_i[0] : '0;
+  assign acc_data[1] = acc_insn_valid_q[1] ? fu_data_i[1] : '0;
+
+  cva6_fifo_v4 #(
       .DEPTH       (InstructionQueueDepth),
       .FALL_THROUGH(1'b1),
       .dtype       (fu_data_t),
@@ -156,8 +175,10 @@ module acc_dispatcher
       .rst_ni    (rst_ni),
       .flush_i   (flush_ex_i),
       .testmode_i(1'b0),
-      .data_i    (fu_data_i),
-      .push_i    (acc_valid_q),
+      .data_i    (fu_data_i[0]),
+      .push_i    (acc_insn_valid_q[0]),
+      .data_i2   (fu_data_i[1]),
+      .push_i2   (acc_insn_valid_q[1]),
       .full_o    (  /* Unused */),
       .data_o    (acc_insn_queue_o),
       .pop_i     (acc_insn_queue_pop),
@@ -188,7 +209,8 @@ module acc_dispatcher
     insn_ready_d   = insn_ready_q;
 
     // We received a new instruction
-    if (acc_valid_q) insn_pending_d[acc_data.trans_id] = 1'b1;
+    if (acc_insn_valid_q[0]) insn_pending_d[acc_data[0].trans_id] = 1'b1;
+    if (acc_insn_valid_q[1]) insn_pending_d[acc_data[1].trans_id] = 1'b1;
     // Flush all received instructions
     if (flush_ex_i) insn_pending_d = '0;
 
@@ -352,17 +374,103 @@ module acc_dispatcher
 
   assign acc_no_ld_pending = (acc_spec_loads_pending == 3'b0) && (acc_disp_loads_pending == 3'b0);
 
+  logic [1:0] is_accel_load;
+  logic [1:0] load_val;
+  logic load_en;
+  logic load_down_en;
+  logic [2:0] load_delta;
+
+  always_comb begin
+    load_val = 0;
+    load_en = 0;
+    load_down_en = 0;
+    load_delta = 3'd1;
+
+    if(is_accel_load[0] ^ is_accel_load[1]) load_val = 1;
+    if(&is_accel_load) load_val = 2;
+
+    if(load_val == 0) begin
+      if(acc_ld_disp) begin
+        load_en = 1;
+        load_down_en = 1;
+      end
+    end
+    if(load_val == 1) begin
+      if(!acc_ld_disp) begin
+        load_en = 1;
+        load_down_en = 0;
+      end
+    end
+    if(load_val == 2) begin
+      if(acc_ld_disp) begin
+        load_en = 1;
+        load_down_en = 0;
+      end
+      else begin
+        load_en = 1;
+        load_down_en = 0;
+        load_delta = {1'b0, 2'd2}; 
+      end
+    end
+  end
+  assign is_accel_load[0] = acc_valid_d && issue_instr_i[0].op == ACCEL_OP_LOAD;
+  assign is_accel_load[1] = acc_valid_d && issue_instr_i[1].op == ACCEL_OP_LOAD;
+
+  logic [1:0] is_accel_store;
+  logic [1:0] store_val;
+  logic store_en;
+  logic store_down_en;
+  logic [2:0] store_delta;
+
+  always_comb begin
+    store_val = 0;
+    store_en = 0;
+    store_down_en = 0;
+    store_delta = 3'd1;
+
+    if(is_accel_store[0] ^ is_accel_store[1]) store_val = 1;
+    if(&is_accel_store) store_val = 2;
+
+    if(store_val == 0) begin
+      if(acc_st_disp) begin
+        store_en = 1;
+        store_down_en = 1;
+      end
+    end
+    if(store_val == 1) begin
+      if(!acc_st_disp) begin
+        store_en = 1;
+        store_down_en = 0;
+      end
+    end
+    if(store_val == 2) begin
+      if(acc_st_disp) begin
+        store_en = 1;
+        store_down_en = 0;
+      end
+      else begin
+        store_en = 1;
+        store_down_en = 0;
+        store_delta = {1'b0, 2'd2}; 
+      end
+    end
+  end
+  assign is_accel_store[0] = acc_valid_d && issue_instr_i[0].op == ACCEL_OP_STORE;
+  assign is_accel_store[1] = acc_valid_d && issue_instr_i[1].op == ACCEL_OP_STORE;
+
+
   // Count speculative loads. These can still be flushed.
-  counter #(
+  delta_counter #(
       .WIDTH          (3),
       .STICKY_OVERFLOW(0)
   ) i_acc_spec_loads (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
       .clear_i   (flush_ex_i),
-      .en_i      ((acc_valid_d && issue_instr_i.op == ACCEL_OP_LOAD) ^ acc_ld_disp),
+      .en_i      (load_en),
       .load_i    (1'b0),
-      .down_i    (acc_ld_disp),
+      .down_i    (load_down_en),
+      .delta_i   (load_delta),
       .d_i       ('0),
       .q_o       (acc_spec_loads_pending),
       .overflow_o(acc_spec_loads_overflow)
@@ -398,16 +506,17 @@ module acc_dispatcher
   assign acc_no_st_pending = (acc_spec_stores_pending == 3'b0) && (acc_disp_stores_pending == 3'b0);
 
   // Count speculative stores. These can still be flushed.
-  counter #(
+  delta_counter #(
       .WIDTH          (3),
       .STICKY_OVERFLOW(0)
   ) i_acc_spec_stores (
       .clk_i     (clk_i),
       .rst_ni    (rst_ni),
       .clear_i   (flush_ex_i),
-      .en_i      ((acc_valid_d && issue_instr_i.op == ACCEL_OP_STORE) ^ acc_st_disp),
+      .en_i      (store_en),
       .load_i    (1'b0),
-      .down_i    (acc_st_disp),
+      .down_i    (store_down_en),
+      .delta_i   (store_delta),
       .d_i       ('0),
       .q_o       (acc_spec_stores_pending),
       .overflow_o(acc_spec_stores_overflow)
