@@ -20,6 +20,10 @@
      - ``int unsigned``
      - General Purpose Register Size (in bits)
 
+   * - ``VLEN``
+     - ``int unsigned``
+     - Virtual address Size (in bits)
+
    * - ``RVA``
      - ``bit``
      - Atomic RISC-V extension
@@ -27,6 +31,10 @@
    * - ``RVB``
      - ``bit``
      - Bit manipulation RISC-V extension
+
+   * - ``ZKN``
+     - ``bit``
+     - Scalar Cryptography RISC-V entension
 
    * - ``RVV``
      - ``bit``
@@ -47,6 +55,18 @@
    * - ``RVZCMP``
      - ``bit``
      - Zcmp RISC-V extension
+
+   * - ``RVZCMT``
+     - ``bit``
+     - Zcmt RISC-V extension
+
+   * - ``RVSCLIC``
+     - ``bit``
+     - CLIC extension
+
+   * - ``RVXHCLIC``
+     - ``bit``
+     - CLIC virtualization extension (vCLIC)
 
    * - ``RVZiCond``
      - ``bit``
@@ -80,6 +100,10 @@
      - ``bit``
      - Non standard 8bits Floating Point extension
 
+   * - ``XF8ALT``
+     - ``bit``
+     - TO_BE_COMPLETED
+
    * - ``XFVec``
      - ``bit``
      - Non standard Vector Floating Point extension
@@ -99,6 +123,10 @@
    * - ``RVU``
      - ``bit``
      - User mode
+
+   * - ``SoftwareInterruptEn``
+     - ``bit``
+     - Software interrupts are enabled
 
    * - ``DebugEn``
      - ``bit``
@@ -140,6 +168,10 @@
      - ``bit [63:0]``
      - PMP CSR read-only bits
 
+   * - ``PMPNapotEn``
+     - ``bit``
+     - PMP NA4 and NAPOT mode enable
+
    * - ``NrNonIdempotentRules``
      - ``int unsigned``
      - PMA non idempotent rules number
@@ -180,9 +212,17 @@
      - ``bit``
      - CV-X-IF coprocessor interface enable
 
+   * - ``CoproType``
+     - ``copro_type_t``
+     - Coprocessor type
+
    * - ``NOCType``
      - ``noc_type_e``
      - NOC bus type
+
+   * - ``CLICNumInterruptSrc``
+     - ``int unsigned``
+     - Number of interrupt signals from the CLIC.
 
    * - ``AxiAddrWidth``
      - ``int unsigned``
@@ -240,6 +280,14 @@
      - ``int unsigned``
      - Data cache line width
 
+   * - ``DcacheFlushOnFence``
+     - ``bit``
+     - Data cache flush on fence
+
+   * - ``DcacheInvalidateOnFlush``
+     - ``bit``
+     - Data cache invalidate on flush
+
    * - ``DataUserEn``
      - ``int unsigned``
      - User field on data bus enable
@@ -258,7 +306,11 @@
 
    * - ``FpgaEn``
      - ``bit``
-     - Is FPGA optimization of CV32A6
+     - Is FPGA optimization of CV32A6 for Xilinx and Altera
+
+   * - ``FpgaAlteraEn``
+     - ``bit``
+     - Is FPGA optimization for Altera FPGA
 
    * - ``TechnoCut``
      - ``bit``
@@ -300,9 +352,17 @@
      - ``int unsigned``
      - Branch target buffer entries
 
+   * - ``BPType``
+     - ``bp_type_t``
+     - Branch predictor type
+
    * - ``BHTEntries``
      - ``int unsigned``
      - Branch history entries
+
+   * - ``BHTHist``
+     - ``int unsigned``
+     - Branch history bits
 
    * - ``InstrTlbEntries``
      - ``int unsigned``
