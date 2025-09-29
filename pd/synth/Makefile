@@ -21,12 +21,12 @@ TARGET               ?= cv32a65x
 
 EXPORT_LIST=SNPSLMD_QUEUE=TRUE TECH_NAME=$(TECH_NAME) DESIGN_NAME=$(DESIGN_NAME) TARGET=$(TARGET) TERM=vt100 PERIOD=$(PERIOD) FOUNDRY_PATH=$(FOUNDRY_PATH) LOCAL_LIB_PATH=$(LOCAL_LIB_PATH) TARGET_LIBRARY_FILES=$(TARGET_LIBRARY_FILES) INPUT_DELAY=$(INPUT_DELAY) OUTPUT_DELAY=$(OUTPUT_DELAY)
 
-ifndef FOUNDRY_PATH
-  $(error "Please provide FOUNDRY techno")
-endif
-ifndef TECH_NAME
-  $(error "Please provide TECH_NAME techno")
-endif
+#ifndef FOUNDRY_PATH
+#  $(error "Please provide FOUNDRY techno")
+#endif
+#ifndef TECH_NAME
+#  $(error "Please provide TECH_NAME techno")
+#endif
 
 # Create Flist with good compilation order for synthesis
 #	- config_pkg.sv
