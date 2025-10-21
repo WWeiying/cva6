@@ -127,9 +127,9 @@ module issue_stage
     // CVXIF Transaction rejected -> instruction is illegal - EX_STAGE
     output logic x_transaction_rejected_o,
     // Issue scoreboard entry - ACC_DISPATCHER
-    output scoreboard_entry_t [CVA6Cfg.NrIssuePorts-1:0] issue_instr_o,
+    output scoreboard_entry_t issue_instr_o,
     // TO_BE_COMPLETED - ACC_DISPATCHER
-    output logic [CVA6Cfg.NrIssuePorts-1:0] issue_instr_hs_o,
+    output logic issue_instr_hs_o,
     // Transaction ID - EX_STAGE
     input logic [CVA6Cfg.NrWbPorts-1:0][CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_i,
     // Result from branch unit - EX_STAGE
@@ -188,8 +188,8 @@ module issue_stage
   logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_instr_valid_sb_iro;
   logic              [CVA6Cfg.NrIssuePorts-1:0]       issue_ack_iro_sb;
 
-  assign issue_instr_o    = issue_instr_sb_iro;
-  assign issue_instr_hs_o = issue_instr_valid_sb_iro & issue_ack_iro_sb;
+  assign issue_instr_o    = issue_instr_sb_iro[0];
+  assign issue_instr_hs_o = issue_instr_valid_sb_iro[0] & issue_ack_iro_sb[0];
 
   logic x_transaction_accepted_iro_sb, x_issue_writeback_iro_sb;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] x_id_iro_sb;

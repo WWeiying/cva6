@@ -491,8 +491,8 @@ module cva6
   logic [CVA6Cfg.NrIssuePorts-1:0] alu2_valid_id_ex;
   // Accelerator
   logic stall_acc_id;
-  scoreboard_entry_t [CVA6Cfg.NrIssuePorts-1:0] issue_instr_id_acc;
-  logic [CVA6Cfg.NrIssuePorts-1:0] issue_instr_hs_id_acc;
+  scoreboard_entry_t issue_instr_id_acc;
+  logic issue_instr_hs_id_acc;
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] acc_trans_id_ex_id;
   logic [CVA6Cfg.XLEN-1:0] acc_result_ex_id;
   logic acc_valid_ex_id;
@@ -1635,7 +1635,7 @@ module cva6
         .issue_instr_i         (issue_instr_id_acc),
         .issue_instr_hs_i      (issue_instr_hs_id_acc),
         .issue_stall_o         (stall_acc_id),
-        .fu_data_i             (fu_data_id_ex),
+        .fu_data_i             (fu_data_id_ex[0]),
         .commit_instr_i        (commit_instr_id_commit),
         .commit_st_barrier_i   (fence_i_commit_controller | fence_commit_controller),
         .acc_trans_id_o        (acc_trans_id_ex_id),
@@ -1947,10 +1947,10 @@ module cva6
   );
 
   //pragma translate_off
-//  initial begin
-//    assert (!(CVA6Cfg.SuperscalarEn && CVA6Cfg.EnableAccelerator))
-//    else $fatal(1, "Accelerator is not supported by superscalar pipeline");
-//  end
+  initial begin
+    assert (!(CVA6Cfg.SuperscalarEn && CVA6Cfg.EnableAccelerator))
+    else $fatal(1, "Accelerator is not supported by superscalar pipeline");
+  end
   //pragma translate_on
 
 endmodule  // ariane

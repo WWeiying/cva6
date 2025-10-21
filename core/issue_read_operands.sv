@@ -1065,11 +1065,11 @@ module issue_read_operands
   // issue port 2 is issuing to FPU, issue port 1 should issue to ALU1 instead
   // of ALU2 so that FPU is not busy.  However, if FPU has a minimum execution
   // time of 2 cycles, it is possible to simply not raise fus_busy[1].alu2.
-//  initial begin
-//    assert (!(CVA6Cfg.SuperscalarEn && CVA6Cfg.FpPresent))
-//    else
-//      $fatal(1, "FPU is not yet supported in superscalar CVA6, see comments above this assertion.");
-//  end
+  initial begin
+    assert (!(CVA6Cfg.SuperscalarEn && CVA6Cfg.FpPresent))
+    else
+      $fatal(1, "FPU is not yet supported in superscalar CVA6, see comments above this assertion.");
+  end
 
   for (genvar i = 0; i < CVA6Cfg.NrIssuePorts; i++) begin
     assert property (@(posedge clk_i) (branch_valid_q) |-> (!$isunknown(

@@ -110,7 +110,6 @@ sources:
       # Tracing
       - core/cva6_rvfi_probes.sv
       - core/cva6_fifo_v3.sv
-      - core/cva6_fifo_v4.sv
       # Top-level source files (not necessarily instantiated at the top of the cva6).
       # - corev_apu/tb/ariane.sv
       - core/cva6.sv
